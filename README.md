@@ -3,7 +3,9 @@ Tooling for checking a list of dependencies against the [Sonatype OSS Index](htt
 
 This tool is designed to work against the CSV file that is output by [streeva/read-dependencies-go](https://github.com/streeva/read-dependencies-go) or [streeva/read-dependencies-action](https://github.com/streeva/read-dependencies-action)
 
-You can provide a Bot User OAuth Access Token and the application will attempt to post message(s) about any vulnerabilities find to Slack via a custom bot.  Checks can be made against the OSS Index anonymously, but they are rate-limited, if you find you are getting told to back off by the service you can [sign-up for free](https://ossindex.sonatype.org/user/register) and this gives you an increase to the access limit.
+The application will attempt to post message(s) about any vulnerabilities found to Slack via a custom bot if you set-up a custom app and provide a Bot User OAuth Access Token.
+
+Checks will be made against the OSS Index anonymously by default, but they are rate-limited, if you find you are getting told to back off by the service you can [sign-up for free](https://ossindex.sonatype.org/user/register) and this gives you an increase to the access limit.
 
 ## Usage
 A pre-built Docker image is available publicly on GitHub Container Registry, which you can run as so:
