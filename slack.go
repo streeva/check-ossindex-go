@@ -13,14 +13,14 @@ type Attachment struct
 	Link					string
 }
 
-func SendSlackMessage(token string, message string, attachments []Attachment) {
+func SendSlackMessage(token string, message string, attachments []Attachment) error {
 	var api = slack.New(token)
 
 	params := slack.GetConversationsParameters{}
 	channels, _, err := api.GetConversations(&params)
 	if err != nil {
 		fmt.Printf("%s\n", err)
-		return
+		return err
 	}
 
 	var slackAttachments []slack.Attachment
@@ -44,9 +44,11 @@ func SendSlackMessage(token string, message string, attachments []Attachment) {
 			)
 			if err != nil {
 				fmt.Printf("%s\n", err)
-				return
+				return err
 			}
-			fmt.Printf("Message successfully sent to channel %s at %s", channel.Name, timestamp)
+			fmt.Printf("Message successfully sent to channel %s at %s\n", channel.Name, timestamp)
 		}
 	}
+
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -36,6 +37,7 @@ func main() {
 	}
 
 	coordinatesMap := make(map[string]bool)
+	usageMap := make(map[string][]string)
 	file, err := os.Open(filename)
 	check(err)
 	scanner := bufio.NewScanner(file)
@@ -46,7 +48,9 @@ func main() {
 			os.Exit(EXIT_FAILURE)
 		}
 
-		coordinatesMap[fmt.Sprintf("pkg:%s/%s@%s", strings.ToLower(segments[1]), segments[2], segments[3])] = true
+		coords := fmt.Sprintf("pkg:%s/%s@%s", strings.ToLower(segments[1]), segments[2], segments[3])
+		coordinatesMap[coords] = true
+		usageMap[coords] = append(usageMap[coords], fileNameWithoutExtension(segments[0]))
 	}
 
 	var coordinates []string
@@ -59,24 +63,45 @@ func main() {
 		os.Exit(EXIT_FAILURE)
 	}
 
+	vulnerabilityDetected := false
 	var componentReports = CheckOssIndex(coordinates, username, token)
 	for _, componentReport := range *componentReports {
 		if len(componentReport.Vulnerabilities) <= 0 {
 			continue
 		}
 
-		if len(slacktoken) > 0 {
-			var attachments []Attachment
-			for _, vulnerability := range componentReport.Vulnerabilities {
-				attachments = append(attachments, Attachment { 
-						Heading: 				fmt.Sprintf("%-10s %s",strings.ToUpper(GetSeverityClass(vulnerability.CVSSScore)), vulnerability.Title), 
-						Content:				vulnerability.Description,
-						SidebarColour:	GetSeverityColour(vulnerability.CVSSScore),
-						Link:						vulnerability.Reference,
-					})
-			}
+		vulnerabilityDetected = true
+		fmt.Println(fmt.Sprintf("Vulnerabilities in project(s) %s dependency %s",strings.Join(usageMap[componentReport.Coordinates],", "),componentReport.Coordinates))
 
-			SendSlackMessage(slacktoken, fmt.Sprintf("Vulnerabilities in project %s dependency <%s|%s>","blah",componentReport.Reference,componentReport.Coordinates), attachments)
+		var attachments []Attachment
+		for _, vulnerability := range componentReport.Vulnerabilities {
+			vulnerabilityMessage := fmt.Sprintf("%-10s %s",strings.ToUpper(GetSeverityClass(vulnerability.CVSSScore)), vulnerability.Title)
+			fmt.Println(vulnerabilityMessage)
+
+			attachments = append(attachments, Attachment { 
+					Heading: 				vulnerabilityMessage, 
+					Content:				vulnerability.Description,
+					SidebarColour:	GetSeverityColour(vulnerability.CVSSScore),
+					Link:						vulnerability.Reference,
+				})
 		}
+
+		fmt.Println(componentReport.Reference)
+
+		if len(slacktoken) > 0 {
+			err = SendSlackMessage(slacktoken, fmt.Sprintf("Vulnerabilities in project %s dependency <%s|%s>",strings.Join(usageMap[componentReport.Coordinates],", "),componentReport.Reference,componentReport.Coordinates), attachments)
+			check(err)
+		}
+
+		fmt.Println()
 	}
+
+	if vulnerabilityDetected {
+		fmt.Println("Component vulnerabilities reported, exiting with non-zero status")
+		os.Exit(EXIT_FAILURE)
+	}
+}
+
+func fileNameWithoutExtension(fileName string) string {
+	return strings.TrimSuffix(fileName, filepath.Ext(fileName))
 }
